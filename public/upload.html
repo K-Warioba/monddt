@@ -3,120 +3,299 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload — monDDT</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; background: #f9fafb; }
-    .container { max-width: 720px; margin: 0 auto; padding: 60px 20px; }
-    h1 { margin-bottom: 8px; }
-    .lead { color: #555; margin-bottom: 32px; }
-    .card { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
-    label { display: block; margin-bottom: 8px; font-weight: 600; }
-    input[type="email"], input[type="text"] {
-      width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; margin-bottom: 20px;
-    }
-    .dropzone {
-      border: 2px dashed #cbd5e1; border-radius: 8px; padding: 48px 24px; text-align: center;
-      background: #f8fafc; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 20px;
-    }
-    .dropzone:hover, .dropzone.dragover { border-color: #2563eb; background: #eff6ff; }
-    .dropzone input { display: none; }
-    .file-list { margin-bottom: 20px; }
-    .file-list li { padding: 8px 12px; background: #f3f4f6; border-radius: 4px; margin-bottom: 4px; list-style: none; font-size: 0.9rem; }
-    button {
-      width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 6px;
-      font-size: 1.05rem; font-weight: 600; cursor: pointer;
-    }
-    button:hover:not(:disabled) { background: #1d4ed8; }
-    button:disabled { background: #9ca3af; cursor: not-allowed; }
-    .status { margin-top: 16px; padding: 12px; border-radius: 6px; display: none; }
-    .status.error { display: block; background: #fee2e2; color: #991b1b; }
-    .status.success { display: block; background: #d1fae5; color: #065f46; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Importez vos diagnostics</h1>
-    <p class="lead">Glissez-déposez vos PDFs ci-dessous. Vous recevrez votre DDT par email une fois le traitement terminé.</p>
-
-    <form class="card" id="upload-form">
-      <label for="email">Email de réception</label>
-      <input type="email" id="email" name="email" required placeholder="vous@example.com" />
-
-      <label for="reference">Référence (optionnel)</label>
-      <input type="text" id="reference" name="reference" placeholder="ex. 12 rue des Lilas, Lyon" />
-
-      <label>Vos PDFs</label>
-      <label class="dropzone" id="dropzone">
-        <input type="file" id="files" name="files" multiple accept="application/pdf" />
-        <p>Cliquez ou glissez-déposez vos fichiers PDF ici</p>
-      </label>
-
-      <ul class="file-list" id="file-list"></ul>
-
-      <button type="submit" id="submit-btn">Lancer le traitement</button>
-
-      <div class="status" id="status"></div>
-    </form>
-  </div>
-
+  <title>Importez vos diagnostics — monddt.fr</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    const dropzone = document.getElementById('dropzone');
-    const fileInput = document.getElementById('files');
-    const fileList = document.getElementById('file-list');
-    const form = document.getElementById('upload-form');
-    const status = document.getElementById('status');
-    const submitBtn = document.getElementById('submit-btn');
+    tailwind.config = {
+      theme: { extend: { colors: { navy: { 50:'#f0f4f8',100:'#d9e2ec',200:'#bcccdc',500:'#486581',600:'#334e68',700:'#243b53',800:'#102a43',900:'#0a1f33' } } } },
+    };
+  </script>
+</head>
+<body class="bg-white text-navy-800 font-sans antialiased min-h-screen flex flex-col">
 
-    function renderFiles() {
-      fileList.innerHTML = '';
-      Array.from(fileInput.files).forEach(f => {
-        const li = document.createElement('li');
-        li.textContent = `${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
-        fileList.appendChild(li);
-      });
+  <header class="border-b border-navy-100 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="/" class="text-xl font-bold text-navy-800">monddt<span class="text-navy-500">.fr</span></a>
+      <a href="mailto:contact@monddt.fr" class="text-sm text-navy-600 hover:text-navy-800">Besoin d'aide&nbsp;?</a>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full max-w-2xl mx-auto px-6 py-12">
+
+    <!-- Phase 1: payment verification -->
+    <section id="phase-verify" class="text-center py-16">
+      <div class="inline-block w-12 h-12 border-4 border-navy-200 border-t-navy-800 rounded-full animate-spin mb-6"></div>
+      <p class="text-navy-600">Vérification du paiement…</p>
+    </section>
+
+    <!-- Phase 2: payment failed / session invalid -->
+    <section id="phase-error" class="hidden text-center py-16">
+      <div class="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center text-3xl text-red-600 mb-4">!</div>
+      <h1 class="text-2xl font-bold text-navy-900 mb-3">Paiement non vérifié</h1>
+      <p class="text-navy-600 mb-2" id="error-message">Nous n'avons pas pu confirmer votre paiement.</p>
+      <p class="text-navy-500 text-sm mb-8">Si vous avez bien effectué le paiement, contactez-nous à <a href="mailto:contact@monddt.fr" class="underline">contact@monddt.fr</a> en indiquant votre identifiant de session.</p>
+      <a href="/" class="inline-block bg-navy-800 hover:bg-navy-700 text-white font-semibold px-6 py-3 rounded-lg">Retour à l'accueil</a>
+    </section>
+
+    <!-- Phase 3: upload form -->
+    <section id="phase-form" class="hidden">
+      <div class="mb-8">
+        <div class="inline-block bg-navy-50 text-navy-700 text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full mb-3" id="tier-badge">Express</div>
+        <h1 class="text-3xl font-bold text-navy-900 mb-2">Importez vos diagnostics</h1>
+        <p class="text-navy-600">Glissez vos PDFs ci-dessous (max <span id="max-files-label">5</span> fichiers). Nous extrayons le texte localement, puis générons votre synthèse.</p>
+      </div>
+
+      <form id="upload-form" class="space-y-6 bg-white border border-navy-100 rounded-xl p-6 md:p-8 shadow-sm">
+
+        <div>
+          <label for="email" class="block text-sm font-semibold text-navy-800 mb-2">Email de réception *</label>
+          <input type="email" id="email" name="email" required placeholder="vous@example.com"
+                 class="w-full px-4 py-3 border border-navy-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-navy-500 focus:border-navy-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-navy-800 mb-2">Vos PDFs (max <span class="max-files-label">5</span>)</label>
+          <label id="dropzone" for="files"
+                 class="block border-2 border-dashed border-navy-200 rounded-lg p-10 text-center cursor-pointer bg-navy-50 hover:bg-navy-100 hover:border-navy-500 transition">
+            <svg class="w-10 h-10 mx-auto text-navy-500 mb-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.9 5 5 0 019.9-1A5.5 5.5 0 0118 16h-1m-6-3v8m0 0l-3-3m3 3l3-3"/>
+            </svg>
+            <p class="text-navy-700 font-medium">Cliquez ou glissez vos PDFs ici</p>
+            <p class="text-navy-500 text-sm mt-1">Format accepté : PDF — Taille max : 10 Mo / fichier</p>
+            <input type="file" id="files" multiple accept="application/pdf" class="hidden" />
+          </label>
+          <ul id="file-list" class="mt-4 space-y-2"></ul>
+          <p id="file-count-error" class="hidden text-sm text-red-600 mt-2"></p>
+        </div>
+
+        <button type="submit" id="submit-btn"
+                class="w-full bg-navy-800 hover:bg-navy-700 disabled:bg-navy-200 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-lg transition">
+          Analyser mon dossier
+        </button>
+
+        <p class="text-xs text-navy-500 text-center">
+          En cliquant, vous acceptez nos <a href="/cgv.html" class="underline">CGV</a> et notre <a href="/rgpd.html" class="underline">politique de confidentialité</a>.
+        </p>
+      </form>
+    </section>
+
+    <!-- Phase 4: processing -->
+    <section id="phase-processing" class="hidden text-center py-16">
+      <div class="inline-block w-16 h-16 border-4 border-navy-200 border-t-navy-800 rounded-full animate-spin mb-6"></div>
+      <h1 class="text-2xl font-bold text-navy-900 mb-3">Analyse en cours</h1>
+      <p class="text-navy-600 font-medium mb-2">Ne fermez pas cette page&hellip;</p>
+      <p class="text-navy-500 text-sm" id="processing-step">Extraction du texte des PDFs</p>
+      <div class="mt-6 max-w-md mx-auto bg-navy-50 rounded-full h-2 overflow-hidden">
+        <div id="progress-bar" class="bg-navy-800 h-2 transition-all duration-500" style="width: 10%;"></div>
+      </div>
+    </section>
+
+    <!-- Phase 5: submission failed -->
+    <section id="phase-fail" class="hidden text-center py-16">
+      <div class="w-16 h-16 mx-auto rounded-full bg-red-100 flex items-center justify-center text-3xl text-red-600 mb-4">!</div>
+      <h1 class="text-2xl font-bold text-navy-900 mb-3">Une erreur est survenue</h1>
+      <p class="text-navy-600 mb-2" id="fail-message">Nous n'avons pas pu traiter votre dossier.</p>
+      <p class="text-navy-500 text-sm mb-8">
+        Aucun email ne vous a été envoyé. Contactez-nous à <a href="mailto:contact@monddt.fr" class="underline">contact@monddt.fr</a> en mentionnant votre identifiant de session — nous vous remboursons ou relançons le traitement.
+      </p>
+      <button onclick="location.reload()" class="inline-block bg-navy-800 hover:bg-navy-700 text-white font-semibold px-6 py-3 rounded-lg">Réessayer</button>
+    </section>
+
+  </main>
+
+  <footer class="bg-navy-900 text-navy-100 py-6">
+    <div class="max-w-6xl mx-auto px-6 text-center text-xs">
+      &copy; 2026 monddt.fr — <a href="/cgv.html" class="hover:text-white">CGV</a> · <a href="/rgpd.html" class="hover:text-white">RGPD</a> · <a href="/mentions-legales.html" class="hover:text-white">Mentions légales</a>
+    </div>
+  </footer>
+
+  <!-- PDF.js (browser-side text extraction) -->
+  <script type="module">
+    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => document.querySelectorAll(sel);
+
+    const phases = {
+      verify: $('#phase-verify'),
+      error: $('#phase-error'),
+      form: $('#phase-form'),
+      processing: $('#phase-processing'),
+      fail: $('#phase-fail'),
+    };
+    function show(name) {
+      Object.values(phases).forEach(el => el.classList.add('hidden'));
+      phases[name].classList.remove('hidden');
     }
 
-    fileInput.addEventListener('change', renderFiles);
+    // ---------- Phase 1: verify Stripe payment ----------
+    const params = new URLSearchParams(location.search);
+    const sessionId = params.get('session_id');
 
-    ['dragenter', 'dragover'].forEach(ev => {
-      dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    });
-    ['dragleave', 'drop'].forEach(ev => {
-      dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragover'); });
-    });
-    dropzone.addEventListener('drop', e => {
-      fileInput.files = e.dataTransfer.files;
-      renderFiles();
-    });
-
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      status.className = 'status';
-      status.textContent = '';
-
-      if (!fileInput.files.length) {
-        status.classList.add('error');
-        status.textContent = 'Sélectionnez au moins un PDF.';
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Traitement en cours…';
-
-      const formData = new FormData(form);
-
+    let session = null;
+    if (!sessionId) {
+      $('#error-message').textContent = "Aucun identifiant de session n'a été fourni dans l'URL.";
+      show('error');
+    } else {
       try {
-        const res = await fetch('/api/process-pdfs', { method: 'POST', body: formData });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        window.location.href = 'success.html';
+        const res = await fetch(`/api/verify-payment?session_id=${encodeURIComponent(sessionId)}`);
+        const data = await res.json();
+        if (!res.ok || !data.paid) {
+          $('#error-message').textContent = data.reason
+            ? `Paiement non confirmé (${data.reason}).`
+            : "Nous n'avons pas pu confirmer votre paiement.";
+          show('error');
+        } else {
+          session = data; // { paid, email, tier, maxFiles, orderId }
+          initForm();
+        }
       } catch (err) {
-        status.classList.add('error');
-        status.textContent = `Erreur: ${err.message}`;
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Lancer le traitement';
+        console.error(err);
+        $('#error-message').textContent = "Erreur réseau lors de la vérification du paiement.";
+        show('error');
       }
-    });
+    }
+
+    // ---------- Phase 3: form ----------
+    function initForm() {
+      $('#tier-badge').textContent = session.tier === 'premium' ? 'Premium' : 'Express';
+      $$('.max-files-label, #max-files-label').forEach(el => { el.textContent = String(session.maxFiles); });
+      if (session.email) $('#email').value = session.email;
+
+      const fileInput = $('#files');
+      const dropzone = $('#dropzone');
+      const fileList = $('#file-list');
+      const countErr = $('#file-count-error');
+      const submitBtn = $('#submit-btn');
+      let files = [];
+
+      function renderFiles() {
+        fileList.innerHTML = '';
+        files.forEach((f, idx) => {
+          const li = document.createElement('li');
+          li.className = 'flex items-center justify-between bg-navy-50 px-3 py-2 rounded text-sm text-navy-800';
+          li.innerHTML = `
+            <span class="truncate flex-1">${f.name} <span class="text-navy-500">(${(f.size/1024).toFixed(1)} KB)</span></span>
+            <button type="button" data-idx="${idx}" class="ml-3 text-navy-500 hover:text-red-600 text-lg leading-none" aria-label="Retirer">&times;</button>
+          `;
+          fileList.appendChild(li);
+        });
+        fileList.querySelectorAll('button[data-idx]').forEach(btn => {
+          btn.addEventListener('click', e => {
+            files.splice(Number(e.target.dataset.idx), 1);
+            renderFiles();
+          });
+        });
+      }
+
+      function addFiles(newFiles) {
+        countErr.classList.add('hidden');
+        for (const f of newFiles) {
+          if (f.type !== 'application/pdf' && !f.name.toLowerCase().endsWith('.pdf')) continue;
+          if (f.size > 10 * 1024 * 1024) {
+            countErr.textContent = `« ${f.name} » dépasse 10 Mo et a été ignoré.`;
+            countErr.classList.remove('hidden');
+            continue;
+          }
+          if (files.length >= session.maxFiles) {
+            countErr.textContent = `Limite de ${session.maxFiles} fichiers atteinte.`;
+            countErr.classList.remove('hidden');
+            break;
+          }
+          files.push(f);
+        }
+        renderFiles();
+      }
+
+      fileInput.addEventListener('change', e => addFiles(e.target.files));
+      ['dragenter','dragover'].forEach(ev =>
+        dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('bg-navy-100','border-navy-500'); }));
+      ['dragleave','drop'].forEach(ev =>
+        dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('bg-navy-100','border-navy-500'); }));
+      dropzone.addEventListener('drop', e => addFiles(e.dataTransfer.files));
+
+      $('#upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        countErr.classList.add('hidden');
+
+        const email = $('#email').value.trim();
+        if (!email) return;
+        if (!files.length) {
+          countErr.textContent = 'Sélectionnez au moins un PDF.';
+          countErr.classList.remove('hidden');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        await runPipeline(files, email);
+      });
+
+      show('form');
+    }
+
+    // ---------- Phase 4: extract + process ----------
+    async function extractPdfText(file) {
+      const buffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const pages = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const text = content.items.map(it => it.str).join(' ');
+        pages.push(text);
+      }
+      return pages.join('\n\n').trim();
+    }
+
+    function setProgress(pct, label) {
+      $('#progress-bar').style.width = `${pct}%`;
+      if (label) $('#processing-step').textContent = label;
+    }
+
+    async function runPipeline(files, email) {
+      show('processing');
+      try {
+        setProgress(10, `Extraction du texte des PDFs (0 / ${files.length})`);
+        const pdfTexts = [];
+        for (let i = 0; i < files.length; i++) {
+          const text = await extractPdfText(files[i]);
+          if (!text) {
+            throw new Error(`Aucun texte extractible dans « ${files[i].name} ». Le PDF est-il un scan sans OCR ?`);
+          }
+          pdfTexts.push({ filename: files[i].name, text });
+          const pct = 10 + Math.round(((i + 1) / files.length) * 30);
+          setProgress(pct, `Extraction du texte des PDFs (${i + 1} / ${files.length})`);
+        }
+
+        setProgress(50, 'Analyse par l\'IA en cours…');
+        const res = await fetch('/api/process-pdfs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: session.orderId,
+            email,
+            pdfTexts,
+            tier: session.tier,
+          }),
+        });
+
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || `Erreur serveur (HTTP ${res.status})`);
+        }
+
+        setProgress(100, 'Email envoyé');
+        await new Promise(r => setTimeout(r, 600));
+        location.href = `/success.html?id=${encodeURIComponent(session.orderId || '')}`;
+      } catch (err) {
+        console.error('Pipeline error:', err);
+        $('#fail-message').textContent = err.message || "Une erreur est survenue.";
+        show('fail');
+      }
+    }
   </script>
+
 </body>
 </html>
