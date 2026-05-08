@@ -1,79 +1,47 @@
 const Anthropic = require('@anthropic-ai/sdk');
-const pdfParse = require('pdf-parse');
-const Busboy = require('busboy');
 const { sendDdtEmail } = require('./send-email');
 const { MASTER_PROMPT } = require('./master-prompt');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function parseMultipart(event) {
-  return new Promise((resolve, reject) => {
-    const headers = Object.fromEntries(
-      Object.entries(event.headers).map(([k, v]) => [k.toLowerCase(), v])
-    );
-    const bb = Busboy({ headers });
-    const fields = {};
-    const files = [];
-
-    bb.on('field', (name, value) => { fields[name] = value; });
-
-    bb.on('file', (name, stream, info) => {
-      const chunks = [];
-      stream.on('data', c => chunks.push(c));
-      stream.on('end', () => {
-        files.push({
-          fieldname: name,
-          filename: info.filename,
-          mimetype: info.mimeType,
-          buffer: Buffer.concat(chunks),
-        });
-      });
-    });
-
-    bb.on('finish', () => resolve({ fields, files }));
-    bb.on('error', reject);
-
-    const body = event.isBase64Encoded ? Buffer.from(event.body, 'base64') : Buffer.from(event.body);
-    bb.end(body);
-  });
-}
-
-async function extractPdfText(buffer, filename) {
-  const data = await pdfParse(buffer);
-  return { filename, text: data.text };
-}
-
-async function generateSynthesis(extractedDocs) {
-  const documentsBlock = extractedDocs
-    .map(d => `=== ${d.filename} ===\n${d.text}`)
+async function generateSynthesis(pdfTexts) {
+  const documentsBlock = pdfTexts
+    .map(d => `=== FICHIER: ${d.filename} ===\n${d.text}`)
     .join('\n\n');
 
   const prompt = MASTER_PROMPT.replace('{DOCUMENTS_TEXT}', documentsBlock);
-  const prefill = '{';
 
   const message = await anthropic.messages.create({
     model: 'claude-opus-4-7',
-    max_tokens: 4000,
+    max_tokens: 8000,
     messages: [
       { role: 'user', content: prompt },
-      { role: 'assistant', content: prefill },
     ],
   });
 
   const completion = message.content
     .filter(block => block.type === 'text')
     .map(block => block.text)
-    .join('');
+    .join('')
+    .trim();
 
-  const raw = (prefill + completion)
+  // Defensive: strip markdown fences, then slice to the outermost {...} in case
+  // the model adds any preamble/postamble despite the prompt's instructions.
+  let raw = completion
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/```\s*$/, '')
     .trim();
 
+  const firstBrace = raw.indexOf('{');
+  const lastBrace = raw.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    raw = raw.slice(firstBrace, lastBrace + 1);
+  }
+
   try {
     return JSON.parse(raw);
   } catch (err) {
-    console.error('Model returned non-JSON output:', raw.slice(0, 800));
+    console.error('Model returned non-JSON output (first 800 chars):', raw.slice(0, 800));
     throw new Error('Synthèse invalide (JSON non parsable)');
   }
 }
@@ -185,41 +153,61 @@ function renderEmailHtml(s, reference) {
 
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+    return {
+      statusCode: 405,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Method Not Allowed' }),
+    };
   }
 
+  let body;
   try {
-    const { fields, files } = await parseMultipart(event);
-    const email = fields.email;
-    const reference = fields.reference || '';
+    body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body;
+  } catch (err) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ error: 'Invalid JSON body' }),
+    };
+  }
 
-    if (!email) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'Email required' }) };
-    }
-    if (!files.length) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'At least one PDF required' }) };
-    }
+  const { orderId, email, pdfTexts, tier } = body || {};
 
-    const extracted = await Promise.all(
-      files.map(f => extractPdfText(f.buffer, f.filename))
-    );
+  if (!email) {
+    return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'email required' }) };
+  }
+  if (!Array.isArray(pdfTexts) || pdfTexts.length === 0) {
+    return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'pdfTexts must be a non-empty array' }) };
+  }
+  if (tier && tier !== 'express' && tier !== 'premium') {
+    return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'tier must be "express" or "premium"' }) };
+  }
 
-    const synthesis = await generateSynthesis(extracted);
-    const ddtHtml = renderEmailHtml(synthesis, reference);
+  const tierFinal = tier || 'express';
 
-    await sendDdtEmail({ to: email, reference, ddtHtml });
+  try {
+    const synthesis = await generateSynthesis(pdfTexts);
+    const ddtHtml = renderEmailHtml(synthesis, orderId || '');
+
+    await sendDdtEmail({ to: email, reference: orderId || '', ddtHtml });
+
+    // TODO premium: generate downloadable PDF (HTML -> PDF). For now both tiers
+    // receive the same HTML email; PDF download will come in a follow-up.
 
     return {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, files: files.length }),
+      body: JSON.stringify({ ok: true, orderId: orderId || null, tier: tierFinal, synthesis }),
     };
   } catch (err) {
-    console.error('process-pdfs error:', err);
+    console.error('process-pdfs error', { orderId, email, tier: tierFinal, message: err.message, stack: err.stack });
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
+      body: JSON.stringify({ ok: false, orderId: orderId || null, error: err.message }),
     };
   }
 };
+
+exports.generateSynthesis = generateSynthesis;
+exports.renderEmailHtml = renderEmailHtml;

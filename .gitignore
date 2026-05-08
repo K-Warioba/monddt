@@ -24,3 +24,6 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# Local test harnesses (one-off scripts, may include API keys at invocation time)
+_test_*.js

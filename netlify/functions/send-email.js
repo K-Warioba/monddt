@@ -1,7 +1,17 @@
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+
+let _resend;
+function getResend() {
+  if (!_resend) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('RESEND_API_KEY is not set');
+    }
+    _resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return _resend;
+}
 
 async function sendDdtEmail({ to, reference, ddtHtml }) {
   const subject = reference
@@ -20,7 +30,7 @@ async function sendDdtEmail({ to, reference, ddtHtml }) {
     </div>
   `;
 
-  const result = await resend.emails.send({
+  const result = await getResend().emails.send({
     from: FROM,
     to,
     subject,
