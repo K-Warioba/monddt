@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload — monDDT</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; background: #f9fafb; }
+    .container { max-width: 720px; margin: 0 auto; padding: 60px 20px; }
+    h1 { margin-bottom: 8px; }
+    .lead { color: #555; margin-bottom: 32px; }
+    .card { background: white; padding: 32px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    label { display: block; margin-bottom: 8px; font-weight: 600; }
+    input[type="email"], input[type="text"] {
+      width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; margin-bottom: 20px;
+    }
+    .dropzone {
+      border: 2px dashed #cbd5e1; border-radius: 8px; padding: 48px 24px; text-align: center;
+      background: #f8fafc; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 20px;
+    }
+    .dropzone:hover, .dropzone.dragover { border-color: #2563eb; background: #eff6ff; }
+    .dropzone input { display: none; }
+    .file-list { margin-bottom: 20px; }
+    .file-list li { padding: 8px 12px; background: #f3f4f6; border-radius: 4px; margin-bottom: 4px; list-style: none; font-size: 0.9rem; }
+    button {
+      width: 100%; padding: 14px; background: #2563eb; color: white; border: none; border-radius: 6px;
+      font-size: 1.05rem; font-weight: 600; cursor: pointer;
+    }
+    button:hover:not(:disabled) { background: #1d4ed8; }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    .status { margin-top: 16px; padding: 12px; border-radius: 6px; display: none; }
+    .status.error { display: block; background: #fee2e2; color: #991b1b; }
+    .status.success { display: block; background: #d1fae5; color: #065f46; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Importez vos diagnostics</h1>
+    <p class="lead">Glissez-déposez vos PDFs ci-dessous. Vous recevrez votre DDT par email une fois le traitement terminé.</p>
+
+    <form class="card" id="upload-form">
+      <label for="email">Email de réception</label>
+      <input type="email" id="email" name="email" required placeholder="vous@example.com" />
+
+      <label for="reference">Référence (optionnel)</label>
+      <input type="text" id="reference" name="reference" placeholder="ex. 12 rue des Lilas, Lyon" />
+
+      <label>Vos PDFs</label>
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="files" name="files" multiple accept="application/pdf" />
+        <p>Cliquez ou glissez-déposez vos fichiers PDF ici</p>
+      </label>
+
+      <ul class="file-list" id="file-list"></ul>
+
+      <button type="submit" id="submit-btn">Lancer le traitement</button>
+
+      <div class="status" id="status"></div>
+    </form>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('files');
+    const fileList = document.getElementById('file-list');
+    const form = document.getElementById('upload-form');
+    const status = document.getElementById('status');
+    const submitBtn = document.getElementById('submit-btn');
+
+    function renderFiles() {
+      fileList.innerHTML = '';
+      Array.from(fileInput.files).forEach(f => {
+        const li = document.createElement('li');
+        li.textContent = `${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+        fileList.appendChild(li);
+      });
+    }
+
+    fileInput.addEventListener('change', renderFiles);
+
+    ['dragenter', 'dragover'].forEach(ev => {
+      dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave', 'drop'].forEach(ev => {
+      dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', e => {
+      fileInput.files = e.dataTransfer.files;
+      renderFiles();
+    });
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      status.className = 'status';
+      status.textContent = '';
+
+      if (!fileInput.files.length) {
+        status.classList.add('error');
+        status.textContent = 'Sélectionnez au moins un PDF.';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Traitement en cours…';
+
+      const formData = new FormData(form);
+
+      try {
+        const res = await fetch('/api/process-pdfs', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.location.href = 'success.html';
+      } catch (err) {
+        status.classList.add('error');
+        status.textContent = `Erreur: ${err.message}`;
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Lancer le traitement';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+{
+  "name": "monddt",
+  "version": "1.0.0",
+  "description": "Génération automatisée de Dossier de Diagnostic Technique à partir de PDFs",
+  "main": "netlify/functions/process-pdfs.js",
+  "scripts": {
+    "dev": "netlify dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["ddt", "diagnostic", "immobilier", "netlify", "claude"],
+  "author": "K-Warioba",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.1",
+    "busboy": "^1.6.0",
+    "pdf-parse": "^2.4.5",
+    "resend": "^6.12.3",
+    "stripe": "^22.1.1"
+  }
+}
