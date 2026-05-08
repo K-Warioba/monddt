@@ -288,7 +288,7 @@
 
         setProgress(100, 'Email envoyé');
         await new Promise(r => setTimeout(r, 600));
-        location.href = `/success.html?id=${encodeURIComponent(session.orderId || '')}`;
+        location.href = `/success.html?id=${encodeURIComponent(session.orderId || '')}&email=${encodeURIComponent(email)}`;
       } catch (err) {
         console.error('Pipeline error:', err);
         $('#fail-message').textContent = err.message || "Une erreur est survenue.";

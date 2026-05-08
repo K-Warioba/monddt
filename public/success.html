@@ -3,35 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Succès — monDDT</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; line-height: 1.6; color: #1a1a1a; background: #f9fafb; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card { max-width: 560px; margin: 20px; background: white; padding: 48px 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; }
-    .check {
-      width: 72px; height: 72px; border-radius: 50%; background: #d1fae5; color: #065f46;
-      display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;
-      font-size: 36px; font-weight: bold;
-    }
-    h1 { font-size: 1.75rem; margin-bottom: 12px; }
-    p { color: #4b5563; margin-bottom: 24px; }
-    .info { background: #eff6ff; border-left: 3px solid #2563eb; padding: 16px; text-align: left; border-radius: 4px; margin-bottom: 24px; font-size: 0.95rem; }
-    a { display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; font-weight: 600; }
-    a:hover { background: #1d4ed8; }
-  </style>
+  <title>Synthèse envoyée — monddt.fr</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { navy: { 50:'#f0f4f8',100:'#d9e2ec',200:'#bcccdc',500:'#486581',600:'#334e68',700:'#243b53',800:'#102a43',900:'#0a1f33' } } } },
+    };
+  </script>
 </head>
-<body>
-  <div class="card">
-    <div class="check">&#10003;</div>
-    <h1>Traitement lancé</h1>
-    <p>Vos PDFs ont bien été reçus. Le DDT compilé vous sera envoyé par email d'ici quelques minutes.</p>
+<body class="bg-white text-navy-800 font-sans antialiased min-h-screen flex flex-col">
 
-    <div class="info">
-      <strong>Et après&nbsp;?</strong><br />
-      Vérifiez votre boîte de réception (et les spams) dans les 5-10 prochaines minutes. Si vous ne recevez rien sous 30 minutes, contactez-nous.
+  <header class="border-b border-navy-100 bg-white">
+    <div class="max-w-6xl mx-auto px-6 py-4">
+      <a href="/" class="text-xl font-bold text-navy-800">monddt<span class="text-navy-500">.fr</span></a>
     </div>
+  </header>
 
-    <a href="index.html">Retour à l'accueil</a>
-  </div>
+  <main class="flex-1 w-full max-w-xl mx-auto px-6 py-16 flex items-center">
+    <div class="w-full bg-white border border-navy-100 rounded-2xl p-8 md:p-10 shadow-sm text-center">
+      <div class="w-16 h-16 mx-auto rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-3xl font-bold mb-6">&#10003;</div>
+
+      <h1 class="text-2xl md:text-3xl font-bold text-navy-900 mb-4">Votre synthèse a été envoyée</h1>
+
+      <p class="text-navy-700 leading-relaxed mb-2">
+        Votre synthèse a été envoyée à <strong id="recipient-email">votre adresse email</strong>.
+      </p>
+      <p class="text-navy-600 mb-6">
+        Vérifiez votre boîte mail (et les <strong>spams</strong>).
+      </p>
+
+      <p class="text-navy-500 text-sm mb-8">
+        Vous ne recevez rien dans 5&nbsp;minutes&nbsp;? Contactez <a href="mailto:contact@monddt.fr" class="underline hover:text-navy-700">contact@monddt.fr</a>.
+      </p>
+
+      <a href="/" class="inline-block bg-navy-800 hover:bg-navy-700 text-white font-semibold px-6 py-3 rounded-lg transition">
+        Analyser un autre dossier
+      </a>
+    </div>
+  </main>
+
+  <footer class="bg-navy-900 text-navy-100 py-6">
+    <div class="max-w-6xl mx-auto px-6 text-center text-xs">
+      &copy; 2026 monddt.fr — <a href="/cgv.html" class="hover:text-white">CGV</a> · <a href="/rgpd.html" class="hover:text-white">RGPD</a> · <a href="/mentions-legales.html" class="hover:text-white">Mentions légales</a>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var email = new URLSearchParams(location.search).get('email');
+      if (email) {
+        var el = document.getElementById('recipient-email');
+        // textContent escapes; safe to display the user's own email back to them
+        el.textContent = email;
+      }
+    })();
+  </script>
+
 </body>
 </html>
