@@ -5,12 +5,14 @@
 //   { paid: true, email, tier: 'express'|'premium', maxFiles: 5|10 }
 // or { paid: false, reason }.
 //
-// Tier resolution (in order):
-//   1. session.metadata.tier  ('express' or 'premium')
-//   2. fall back to 'express'
-//
-// To wire this end-to-end: when creating a Stripe Payment Link, set
-// metadata.tier = 'express' (or 'premium') so we can read it here.
+// Tier resolution (priority order):
+//   1. session.metadata.tier  ('express' or 'premium') — only set if a
+//      Checkout Session is created via the API with explicit metadata.
+//      Note: metadata on a Payment Link does NOT flow to the Session.
+//   2. session.amount_total   — 1400 (€14.00) => express, 2400 => premium.
+//      This is the server-verified source of truth for Payment Link flows
+//      and is immune to URL tampering.
+//   3. fall back to 'express' (safest default).
 
 const Stripe = require('stripe');
 
@@ -27,9 +29,19 @@ function getStripe() {
 
 const TIER_LIMITS = { express: 5, premium: 10 };
 
+// Amounts in minor units (cents) per Stripe convention.
+const TIER_BY_AMOUNT = {
+  1400: 'express', // €14.00
+  2400: 'premium', // €24.00
+};
+
 function resolveTier(session) {
-  const raw = session?.metadata?.tier;
-  if (raw === 'express' || raw === 'premium') return raw;
+  const meta = session?.metadata?.tier;
+  if (meta === 'express' || meta === 'premium') return meta;
+
+  const amountTier = TIER_BY_AMOUNT[session?.amount_total];
+  if (amountTier) return amountTier;
+
   return 'express';
 }
 
