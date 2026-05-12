@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="monddt">
+  <title>monddt</title>
+  <rect width="100" height="100" rx="18" fill="#102a43"/>
+  <path d="M 20 78 L 20 38 L 35 22 L 50 38 L 65 22 L 80 38 L 80 78 M 50 38 L 50 78"
+        fill="none" stroke="#ffffff" stroke-width="11"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

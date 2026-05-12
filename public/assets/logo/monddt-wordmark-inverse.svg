@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 100" role="img" aria-label="monddt.fr">
+  <title>monddt.fr</title>
+  <!-- icon -->
+  <g transform="translate(2, 10) scale(0.8)">
+    <path d="M 20 78 L 20 38 L 35 22 L 50 38 L 65 22 L 80 38 L 80 78 M 50 38 L 50 78"
+          fill="none" stroke="#ffffff" stroke-width="11"
+          stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <!-- wordmark -->
+  <text x="92" y="72"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, 'Helvetica Neue', Arial, sans-serif"
+        font-size="56" font-weight="700" letter-spacing="-0.02em">
+    <tspan fill="#ffffff">monddt</tspan><tspan fill="#bcccdc">.fr</tspan>
+  </text>
+</svg>
