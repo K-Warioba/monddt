@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /upload.html
+Disallow: /success.html
+Disallow: /api/
+
+Sitemap: https://monddt.fr/sitemap.xml
