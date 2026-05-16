@@ -123,6 +123,66 @@
       .group:hover .icon-cluster .pill-center { transform: none; }
       .group:hover .icon-cluster .pill-right  { transform: rotate(6deg); }
     }
+
+    /* Pricing-card interactive states. Three effects:
+       1) Desktop hover lift + shadow grow (uses @media (hover: hover))
+       2) Mobile/touch in-view elevation (set by IntersectionObserver
+          adding .is-revealed; uses @media (hover: none) so we never
+          double-up on devices that already get hover)
+       3) RECOMMANDÉ badge slow scale/shadow pulse */
+    .pricing-card {
+      transition: transform 0.4s cubic-bezier(.2,.8,.2,1),
+                  box-shadow 0.4s ease,
+                  border-color 0.3s ease;
+      will-change: transform;
+    }
+    @media (hover: hover) {
+      .pricing-card:hover {
+        transform: translateY(-6px) scale(1.015);
+        box-shadow: 0 24px 48px -16px rgba(15, 32, 48, 0.18);
+      }
+      .pricing-card.pricing-recommended:hover {
+        transform: translateY(-6px) scale(1.025);
+        box-shadow: 0 28px 56px -16px rgba(15, 32, 48, 0.24);
+      }
+    }
+    @media (hover: none) {
+      .pricing-card.is-revealed {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 32px -12px rgba(15, 32, 48, 0.12);
+      }
+      .pricing-card.pricing-recommended.is-revealed {
+        transform: translateY(-3px) scale(1.01);
+        box-shadow: 0 20px 36px -12px rgba(15, 32, 48, 0.18);
+      }
+    }
+    /* Tap feedback (mobile + desktop) */
+    .pricing-card:active {
+      transform: translateY(-2px) scale(0.985);
+      transition-duration: 0.15s;
+    }
+    .pricing-card.pricing-recommended:active {
+      transform: translateY(-2px) scale(1.005);
+    }
+    @keyframes pricingBadgePulse {
+      0%, 100% {
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 4px 12px rgba(15, 32, 48, 0.18);
+      }
+      50% {
+        transform: translateX(-50%) scale(1.06);
+        box-shadow: 0 8px 20px rgba(15, 32, 48, 0.28);
+      }
+    }
+    .recommended-badge {
+      animation: pricingBadgePulse 3.2s ease-in-out infinite;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .pricing-card { transition: none; }
+      .pricing-card:hover,
+      .pricing-card.is-revealed { transform: none; box-shadow: inherit; }
+      .recommended-badge { animation: none; }
+    }
   </style>
   <!-- Umami Web Analytics (cookieless) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="e0ba03bc-2256-4fe2-bdfe-0d11b83c3577"></script>
@@ -291,7 +351,7 @@
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
 
         <!-- Express -->
-        <div class="border border-navy-200 rounded-2xl p-8 bg-white flex flex-col">
+        <div class="pricing-card border border-navy-200 rounded-2xl p-8 bg-white flex flex-col">
           <div class="mb-6">
             <h3 class="text-2xl font-bold text-navy-900 mb-1">Express</h3>
             <p class="text-sm text-navy-500">Pour un dossier standard</p>
@@ -324,8 +384,8 @@
         </div>
 
         <!-- Premium -->
-        <div class="border-2 border-navy-800 rounded-2xl p-8 bg-navy-50 flex flex-col relative">
-          <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-navy-800 text-white text-xs font-semibold px-3 py-1 rounded-full">RECOMMANDÉ</div>
+        <div class="pricing-card pricing-recommended border-2 border-navy-800 rounded-2xl p-8 bg-navy-50 flex flex-col relative">
+          <div class="recommended-badge absolute -top-3 left-1/2 -translate-x-1/2 bg-navy-800 text-white text-xs font-semibold px-3 py-1 rounded-full">RECOMMANDÉ</div>
           <div class="mb-6">
             <h3 class="text-2xl font-bold text-navy-900 mb-1">Premium</h3>
             <p class="text-sm text-navy-600">Avec estimations de travaux</p>
@@ -467,6 +527,28 @@
         current = (current + 1) % words.length;
         words[current].classList.add('is-active');
       }, rotateMs);
+    })();
+  </script>
+
+  <!-- Pricing cards: in-view reveal so mobile (no :hover) gets the elevation effect too -->
+  <script>
+    (function () {
+      var cards = document.querySelectorAll('.pricing-card');
+      if (!cards.length) return;
+      // Fallback: if IntersectionObserver is missing (very old browser), just mark all revealed.
+      if (!('IntersectionObserver' in window)) {
+        cards.forEach(function (c) { c.classList.add('is-revealed'); });
+        return;
+      }
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (e.isIntersecting) {
+            e.target.classList.add('is-revealed');
+            io.unobserve(e.target); // one-shot per card
+          }
+        });
+      }, { threshold: 0.25 });
+      cards.forEach(function (c) { io.observe(c); });
     })();
   </script>
 
