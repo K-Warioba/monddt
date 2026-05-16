@@ -11,6 +11,15 @@
   <link rel="apple-touch-icon" href="/assets/logo/monddt-icon-square.svg" />
   <title>monddt.fr — Synthèse de diagnostics immobiliers par IA</title>
   <meta name="description" content="Glissez vos PDF de diagnostics immobiliers (DPE, amiante, plomb, électricité, gaz, termites). Recevez une synthèse claire avec les points de vigilance et des arguments pour négocier le prix." />
+
+  <!-- Fonts: preconnect for LCP, swap to avoid render-blocking -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap">
+
+  <!-- Three.js (deferred so it doesn't block render or LCP) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -27,9 +36,21 @@
               800: '#102a43',
               900: '#0a1f33',
             },
+            cream: {
+              50:  '#fbf8f3',
+              100: '#f5efe5',
+              200: '#ebe2d3',
+              300: '#d8c8ac',
+            },
+            rust: {
+              500: '#a04848',
+              600: '#8a3a3a',
+              700: '#702e2e',
+            },
           },
           fontFamily: {
-            sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Inter', 'sans-serif'],
+            serif: ['Fraunces', 'Georgia', 'Times New Roman', 'serif'],
+            sans: ['Bricolage Grotesque', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
           },
         },
       },
@@ -37,6 +58,40 @@
   </script>
   <style>
     html { scroll-behavior: smooth; }
+    /* Subtle paper-grain texture overlay; SVG inlined to avoid an extra request. */
+    .grain {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.92' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 220px;
+      pointer-events: none;
+      mix-blend-mode: multiply;
+    }
+    /* Inked underline that reads like a fountain-pen stroke under "expert". */
+    .ink-underline { box-shadow: inset 0 -0.18em 0 0 rgba(160,72,72,0.18); }
+    /* Stamp badge: slight rotation + paper-stamp aesthetic. */
+    .stamp {
+      transform: rotate(-3deg);
+      border: 2.5px solid currentColor;
+      letter-spacing: 0.08em;
+    }
+    .stamp::before, .stamp::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border: 1px solid currentColor;
+      pointer-events: none;
+      opacity: 0.45;
+    }
+    /* Shader canvas: positioned, low opacity, multiply blends with cream paper. */
+    #shader-bg canvas { display: block; width: 100%; height: 100%; }
+    /* Staggered fade-in on hero load. */
+    @keyframes inkIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .ink-in { animation: inkIn 0.9s cubic-bezier(.2,.7,.2,1) both; }
+    @media (prefers-reduced-motion: reduce) {
+      .ink-in { animation: none; }
+    }
   </style>
   <!-- Umami Web Analytics (cookieless) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="e0ba03bc-2256-4fe2-bdfe-0d11b83c3577"></script>
@@ -60,19 +115,97 @@
     </div>
   </header>
 
-  <!-- Hero -->
-  <section class="bg-gradient-to-b from-navy-50 to-white">
-    <div class="max-w-4xl mx-auto px-6 py-20 md:py-28 text-center">
-      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-navy-900 mb-6">
-        Comprenez vos diagnostics<br class="hidden md:block" /> immobiliers en 2&nbsp;minutes
-      </h1>
-      <p class="text-lg md:text-xl text-navy-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-        Glissez vos PDF (DPE, amiante, plomb, électricité, gaz, termites…) — recevez une synthèse claire avec les vrais points de vigilance et les arguments pour négocier le prix.
-      </p>
-      <a href="#tarifs" class="inline-block bg-navy-800 hover:bg-navy-700 text-white font-semibold text-lg px-8 py-4 rounded-lg shadow-sm transition">
-        Analyser mon dossier
-      </a>
-      <p class="text-xs text-navy-500 mt-6">Paiement sécurisé · Synthèse par email · À partir de 14&nbsp;€</p>
+  <!-- Hero — editorial / document aesthetic -->
+  <section class="relative overflow-hidden bg-cream-100 text-navy-900">
+    <!-- Paper-grain overlay -->
+    <div class="absolute inset-0 grain z-10"></div>
+
+    <!-- Shader background: contained to the right half, multiply-blended into cream -->
+    <div id="shader-bg" class="absolute top-0 right-0 w-full md:w-3/5 h-full opacity-0 transition-opacity duration-1000 z-0 pointer-events-none" aria-hidden="true"
+         style="mix-blend-mode: multiply;"></div>
+
+    <!-- Top edition strip -->
+    <div class="relative z-20 border-b border-navy-900/15">
+      <div class="max-w-6xl mx-auto px-6 md:px-10 py-3 flex items-center justify-between text-[10px] md:text-xs uppercase tracking-[0.25em] text-navy-700">
+        <span class="font-medium">Dossier № <time datetime="2026-05">2026 / 05</time></span>
+        <span class="hidden md:inline font-medium">Édition numérique · Synthèse immobilière par IA</span>
+        <span class="font-medium">monddt<span class="text-rust-600">.fr</span></span>
+      </div>
+    </div>
+
+    <!-- Hero content -->
+    <div class="relative z-20 max-w-6xl mx-auto px-6 md:px-10 pt-16 pb-20 md:pt-24 md:pb-28">
+      <div class="grid grid-cols-12 gap-x-10 gap-y-14 items-start">
+
+        <!-- Left column: headline + body + CTA -->
+        <div class="col-span-12 md:col-span-7">
+          <div class="text-[11px] uppercase tracking-[0.3em] text-rust-600 font-semibold mb-8 ink-in" style="animation-delay: 0.05s;">№ I · La méthode</div>
+
+          <h1 class="font-serif text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] leading-[1.02] tracking-tight text-navy-900 mb-10 ink-in" style="animation-delay: 0.15s; font-feature-settings: 'ss01', 'ss02';">
+            Lire un&nbsp;DDT,<br />
+            comme&nbsp;un <em class="italic font-medium ink-underline">expert.</em>
+          </h1>
+
+          <p class="text-lg md:text-xl text-navy-700 max-w-xl leading-relaxed mb-10 ink-in" style="animation-delay: 0.3s;">
+            L'analyse complète de vos diagnostics immobiliers — DPE, amiante, plomb, électricité, gaz, termites — en 2&nbsp;minutes, par IA. Points de vigilance signalés. Arguments de négociation chiffrés.
+          </p>
+
+          <div class="flex flex-wrap items-center gap-4 ink-in" style="animation-delay: 0.45s;">
+            <a href="#tarifs" class="inline-block bg-navy-900 hover:bg-navy-700 text-cream-100 font-semibold text-sm uppercase tracking-[0.18em] px-7 py-4 transition border-2 border-navy-900">
+              Analyser mon dossier — 14&nbsp;€
+            </a>
+            <a href="#comment" class="inline-block text-navy-700 hover:text-navy-900 font-medium text-sm underline underline-offset-4 decoration-navy-300 hover:decoration-navy-700">
+              Voir la méthode
+            </a>
+          </div>
+
+          <p class="text-[11px] uppercase tracking-[0.22em] text-navy-500 mt-8 ink-in" style="animation-delay: 0.6s;">Paiement Stripe · Synthèse par email · Pas d'abonnement</p>
+        </div>
+
+        <!-- Right column: stamp + spec table + footnote -->
+        <aside class="col-span-12 md:col-span-5 md:pl-8 md:border-l md:border-navy-900/15">
+
+          <!-- Stamped certification badge -->
+          <div class="stamp relative inline-block text-rust-600 px-6 py-4 mb-12 ink-in" style="animation-delay: 0.4s;">
+            <div class="text-[10px] uppercase tracking-[0.3em] font-semibold">Certifié</div>
+            <div class="font-serif text-2xl italic leading-none my-1">IA Expert</div>
+            <div class="text-[10px] uppercase tracking-[0.3em] font-semibold">RepondrIA · 2026</div>
+          </div>
+
+          <!-- Spec table — reads like a magazine sidebar -->
+          <dl class="grid grid-cols-3 gap-x-4 gap-y-3 mb-10 ink-in" style="animation-delay: 0.55s;">
+            <div class="border-t-2 border-navy-900 pt-3">
+              <dt class="text-[10px] uppercase tracking-[0.2em] text-navy-500 mb-1">Délai</dt>
+              <dd class="font-serif text-2xl md:text-3xl font-medium text-navy-900 leading-none">2 min</dd>
+            </div>
+            <div class="border-t-2 border-navy-900 pt-3">
+              <dt class="text-[10px] uppercase tracking-[0.2em] text-navy-500 mb-1">Diagnostics</dt>
+              <dd class="font-serif text-2xl md:text-3xl font-medium text-navy-900 leading-none">8 types</dd>
+            </div>
+            <div class="border-t-2 border-navy-900 pt-3">
+              <dt class="text-[10px] uppercase tracking-[0.2em] text-navy-500 mb-1">À partir</dt>
+              <dd class="font-serif text-2xl md:text-3xl font-medium text-navy-900 leading-none">14&nbsp;€</dd>
+            </div>
+          </dl>
+
+          <!-- Editorial pull-quote -->
+          <figure class="border-l-2 border-rust-600 pl-5 py-1 ink-in" style="animation-delay: 0.7s;">
+            <blockquote class="font-serif italic text-lg md:text-xl text-navy-800 leading-snug">
+              « 80 pages de jargon technique, distillées en une page de décisions. »
+            </blockquote>
+            <figcaption class="text-[11px] uppercase tracking-[0.22em] text-navy-500 mt-3">La méthode monddt</figcaption>
+          </figure>
+
+        </aside>
+      </div>
+    </div>
+
+    <!-- Bottom edition strip -->
+    <div class="relative z-20 border-t border-navy-900/15">
+      <div class="max-w-6xl mx-auto px-6 md:px-10 py-3 flex items-center justify-between text-[10px] md:text-xs uppercase tracking-[0.25em] text-navy-700">
+        <span>Section I de IV</span>
+        <a href="#pourquoi" class="hover:text-navy-900 font-medium">Continuer la lecture ↓</a>
+      </div>
     </div>
   </section>
 
@@ -289,6 +422,136 @@
       </div>
     </div>
   </footer>
+
+  <!-- Hero shader: vanilla port of the Three.js shader-animation component.
+       Loaded only when conditions are met (desktop, motion-allowed, Three.js available).
+       Falls back to a static cream paper for everyone else. -->
+  <script>
+    (function () {
+      var container = document.getElementById('shader-bg');
+      if (!container) return;
+
+      // Bail-out conditions: cumulative perf safety.
+      var prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var isMobile = window.innerWidth < 768;
+      var isWeakCPU = navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4;
+      var saveData = navigator.connection && navigator.connection.saveData;
+
+      if (prefersReducedMotion || isMobile || isWeakCPU || saveData) {
+        // Skip animation entirely. The cream paper grain already provides texture.
+        return;
+      }
+
+      // Three.js loads via defer; wait for it before initializing.
+      function tryInit() {
+        if (typeof THREE === 'undefined') {
+          setTimeout(tryInit, 60);
+          return;
+        }
+        initShader();
+      }
+
+      function initShader() {
+        var vertexShader =
+          'void main() { gl_Position = vec4(position, 1.0); }';
+
+        // Original fragment from the provided React component, unchanged.
+        var fragmentShader =
+          '#define TWO_PI 6.2831853072\n' +
+          '#define PI 3.14159265359\n' +
+          'precision highp float;\n' +
+          'uniform vec2 resolution;\n' +
+          'uniform float time;\n' +
+          'void main(void) {\n' +
+          '  vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);\n' +
+          '  float t = time * 0.05;\n' +
+          '  float lineWidth = 0.002;\n' +
+          '  vec3 color = vec3(0.0);\n' +
+          '  for (int j = 0; j < 3; j++) {\n' +
+          '    for (int i = 0; i < 5; i++) {\n' +
+          '      color[j] += lineWidth * float(i*i) / abs(fract(t - 0.01*float(j) + float(i)*0.01) * 5.0 - length(uv) + mod(uv.x + uv.y, 0.2));\n' +
+          '    }\n' +
+          '  }\n' +
+          '  gl_FragColor = vec4(color[0], color[1], color[2], 1.0);\n' +
+          '}';
+
+        var camera = new THREE.Camera();
+        camera.position.z = 1;
+        var scene = new THREE.Scene();
+        var geometry = new THREE.PlaneGeometry(2, 2);
+        var uniforms = {
+          time:       { value: 1.0 },
+          resolution: { value: new THREE.Vector2() }
+        };
+        var material = new THREE.ShaderMaterial({
+          uniforms: uniforms,
+          vertexShader: vertexShader,
+          fragmentShader: fragmentShader
+        });
+        scene.add(new THREE.Mesh(geometry, material));
+
+        var renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'low-power' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));  // cap DPR to limit fillrate
+        container.appendChild(renderer.domElement);
+
+        function resize() {
+          var w = container.clientWidth;
+          var h = container.clientHeight;
+          renderer.setSize(w, h, false);
+          uniforms.resolution.value.set(renderer.domElement.width, renderer.domElement.height);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Fade in once the first frame is ready — prevents a flash of black.
+        var firstFrame = true;
+        var rafId;
+
+        function animate() {
+          rafId = requestAnimationFrame(animate);
+          uniforms.time.value += 0.05;
+          renderer.render(scene, camera);
+          if (firstFrame) {
+            firstFrame = false;
+            container.style.opacity = '0.55';
+          }
+        }
+        animate();
+
+        // Pause when tab is hidden — saves battery on a backgrounded laptop.
+        document.addEventListener('visibilitychange', function () {
+          if (document.hidden) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+          } else if (!rafId) {
+            animate();
+          }
+        });
+
+        // Pause when the hero scrolls out of view — saves CPU while reading further down.
+        if ('IntersectionObserver' in window) {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (!e.isIntersecting && rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              } else if (e.isIntersecting && !rafId && !document.hidden) {
+                animate();
+              }
+            });
+          }, { threshold: 0.05 });
+          io.observe(container);
+        }
+      }
+
+      // Defer until after first paint to protect LCP.
+      if ('requestIdleCallback' in window) {
+        window.addEventListener('load', function () { requestIdleCallback(tryInit, { timeout: 1200 }); });
+      } else {
+        window.addEventListener('load', function () { setTimeout(tryInit, 200); });
+      }
+    })();
+  </script>
 
 </body>
 </html>
