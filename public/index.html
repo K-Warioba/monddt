@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>(function(){try{var t=localStorage.getItem("monddt-theme");var d=t?t==="dark":window.matchMedia("(prefers-color-scheme: dark)").matches;if(d)document.documentElement.classList.add("dark")}catch(e){}})();</script>
   <meta name="google-adsense-account" content="ca-pub-1157812513428003">
   <!-- Sentry error tracking (EU-hosted) -->
   <script src="https://js-de.sentry-cdn.com/ece53f200638e8a04570322f22da402a.min.js" crossorigin="anonymous"></script>
@@ -13,7 +14,7 @@
   <meta name="description" content="Glissez vos PDF de diagnostics immobiliers (DPE, amiante, plomb, électricité, gaz, termites). Recevez une synthèse claire avec les points de vigilance et des arguments pour négocier le prix." />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
-    tailwind.config = {
+    tailwind.config = { darkMode: 'class',
       theme: {
         extend: {
           colors: {
@@ -184,6 +185,47 @@
       .recommended-badge { animation: none; }
     }
   </style>
+  <style id="theme-css">
+    /* Theme toggle (Sun/Moon) */
+    .theme-btn { transition: background-color .2s, color .2s; color: #486581; }
+    .dark .theme-btn { color: #bcccdc; }
+    .theme-btn:hover { color: #243b53; }
+    .dark .theme-btn:hover { color: #f0f4f8; }
+    .theme-toggle.is-light .theme-btn[data-theme="light"] { background: #102a43; color: #fff; }
+    .theme-toggle.is-dark  .theme-btn[data-theme="dark"]  { background: #f0f4f8; color: #102a43; }
+
+    /* Dark-mode global overrides — invert the most common Tailwind utilities
+       so every page reads correctly when .dark is on <html>, without needing
+       per-element dark: variants on hundreds of nodes. */
+    .dark body { background-color: #0a1f33; color: #d9e2ec; }
+    .dark .bg-white      { background-color: #102a43; }
+    .dark .bg-navy-50    { background-color: #243b53; }
+    .dark .border-navy-100 { border-color: #243b53; }
+    .dark .border-navy-200 { border-color: #334e68; }
+    .dark .text-navy-900 { color: #f0f4f8; }
+    .dark .text-navy-800 { color: #d9e2ec; }
+    .dark .text-navy-700 { color: #bcccdc; }
+    .dark .text-navy-600 { color: #bcccdc; }
+    .dark .text-navy-500 { color: #8a9bb2; }
+    .dark .from-navy-50 { --tw-gradient-from: #243b53 var(--tw-gradient-from-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+    .dark .to-white { --tw-gradient-to: #102a43 var(--tw-gradient-to-position); }
+    .dark .hover\:shadow-md:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.45); }
+    .dark .hover\:shadow-lg:hover { box-shadow: 0 10px 24px rgba(0,0,0,0.55); }
+
+    /* Component-specific dark variants */
+    .dark .icon-pill { background: #102a43; border-color: #243b53; }
+    .dark .icon-pill svg { color: #bcccdc; }
+    .dark .group:hover .icon-pill { border-color: #486581; box-shadow: 0 8px 20px rgba(0,0,0,0.35); }
+    .dark .group:hover .icon-pill svg { color: #f0f4f8; }
+
+    /* Sticky header keeps subtle translucency in dark mode */
+    .dark header.sticky { background-color: rgba(10, 31, 51, 0.92); }
+
+    /* Inputs */
+    .dark input[type="email"], .dark input[type="text"] {
+      background-color: #102a43; color: #d9e2ec; border-color: #334e68;
+    }
+  </style>
   <!-- Umami Web Analytics (cookieless) -->
   <script defer src="https://cloud.umami.is/script.js" data-website-id="e0ba03bc-2256-4fe2-bdfe-0d11b83c3577"></script>
   <!-- Ahrefs Web Analytics -->
@@ -203,6 +245,15 @@
         <a href="#faq" class="hover:text-navy-600">FAQ</a>
       </nav>
       <a href="#tarifs" class="bg-navy-800 hover:bg-navy-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">Analyser mon dossier</a>
+      <div class="theme-toggle inline-flex items-center bg-white dark:bg-navy-800 border border-navy-100 dark:border-navy-700 rounded-full p-0.5 ml-3" role="radiogroup" aria-label="Thème">
+        <button type="button" data-theme="light" class="theme-btn flex items-center justify-center w-7 h-7 rounded-full transition" role="radio" aria-label="Thème clair">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </button>
+        <button type="button" data-theme="dark" class="theme-btn flex items-center justify-center w-7 h-7 rounded-full transition" role="radio" aria-label="Thème sombre">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
+      </div>
+
     </div>
   </header>
 
@@ -549,6 +600,36 @@
         });
       }, { threshold: 0.25 });
       cards.forEach(function (c) { io.observe(c); });
+    })();
+  </script>
+
+  <script>
+    /* Theme toggle wiring. Syncs <html class="dark"> + toggle UI + localStorage. */
+    (function () {
+      var toggles = document.querySelectorAll('.theme-toggle');
+      if (!toggles.length) return;
+      function apply(theme) {
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        toggles.forEach(function (t) {
+          t.classList.toggle('is-dark', theme === 'dark');
+          t.classList.toggle('is-light', theme !== 'dark');
+          t.querySelectorAll('[data-theme]').forEach(function (b) {
+            b.setAttribute('aria-checked', b.dataset.theme === theme ? 'true' : 'false');
+          });
+        });
+        try { localStorage.setItem('monddt-theme', theme); } catch (e) {}
+      }
+      apply(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+      toggles.forEach(function (t) {
+        t.addEventListener('click', function (e) {
+          var btn = e.target.closest('[data-theme]');
+          if (btn) apply(btn.dataset.theme);
+        });
+      });
     })();
   </script>
 
