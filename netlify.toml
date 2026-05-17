@@ -24,3 +24,18 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()"
+    # Content-Security-Policy: starts in Report-Only mode (logs violations
+    # without blocking). Promote to enforcing Content-Security-Policy after
+    # verifying no legit resources are getting blocked. Sources allow-listed:
+    #   - 'self' for everything on monddt.fr
+    #   - cdn.tailwindcss.com (Tailwind CDN that injects runtime styles)
+    #   - js-de.sentry-cdn.com + ingest.sentry.io (error tracking, EU-hosted)
+    #   - analytics.ahrefs.com (Ahrefs Web Analytics)
+    #   - cloud.umami.is (Umami self-hosted analytics)
+    #   - pagead2.googlesyndication.com + Google ad domains (AdSense)
+    #   - data: + https: for img-src (AdSense/Sentry beacons load from many origins)
+    #   - 'unsafe-inline' for script-src (Tailwind config, theme detection,
+    #     rotating-words logic — all are tiny inline blocks; nonce/hash
+    #     migration is a separate task)
+    #   - 'unsafe-inline' for style-src (Tailwind generates inline <style>)
+    Content-Security-Policy-Report-Only = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://js-de.sentry-cdn.com https://browser.sentry-cdn.com https://analytics.ahrefs.com https://cloud.umami.is https://pagead2.googlesyndication.com https://www.googletagservices.com https://googleads.g.doubleclick.net; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: https:; connect-src 'self' https://*.ingest.sentry.io https://*.ingest.de.sentry.io https://cloud.umami.is https://analytics.ahrefs.com https://pagead2.googlesyndication.com; frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
