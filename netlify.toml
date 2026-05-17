@@ -1,6 +1,7 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+  command = "npx tailwindcss -i src/styles.css -o public/dist/styles.css --minify"
 
 [functions]
   node_bundler = "esbuild"

@@ -5,9 +5,17 @@
   "main": "netlify/functions/process-pdfs.js",
   "scripts": {
     "dev": "netlify dev",
+    "build:css": "tailwindcss -i src/styles.css -o public/dist/styles.css --minify",
+    "watch:css": "tailwindcss -i src/styles.css -o public/dist/styles.css --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["ddt", "diagnostic", "immobilier", "netlify", "claude"],
+  "keywords": [
+    "ddt",
+    "diagnostic",
+    "immobilier",
+    "netlify",
+    "claude"
+  ],
   "author": "K-Warioba",
   "license": "ISC",
   "type": "commonjs",
@@ -17,5 +25,10 @@
     "pdf-parse": "^2.4.5",
     "resend": "^6.12.3",
     "stripe": "^22.1.1"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19"
   }
 }
