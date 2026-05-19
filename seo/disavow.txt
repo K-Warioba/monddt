@@ -1,0 +1,12 @@
+# Google Disavow file for monddt.fr
+# Tells Google to ignore links from these domains when assessing monddt.fr's
+# backlink profile. Upload at: https://search.google.com/search-console/disavow-links
+#
+# Last updated: 2026-05-19
+#
+# Note on the entries below: both domains are .shop link-farm spam flagged
+# SPAM by Ahrefs. DR 23, ~5K-6K outbound links each, zero legitimate traffic.
+# They link to thousands of newly-registered .fr domains automatically.
+
+domain:ranklegacy.shop
+domain:rankdominant.shop
