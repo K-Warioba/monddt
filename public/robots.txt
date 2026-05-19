@@ -1,7 +1,11 @@
 User-agent: *
 Allow: /
+
+# Payment-gated funnel pages — disallow both .html and bare-URL variants
 Disallow: /upload.html
+Disallow: /upload
 Disallow: /success.html
+Disallow: /success
 Disallow: /api/
 
 Sitemap: https://monddt.fr/sitemap.xml
