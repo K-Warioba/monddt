@@ -1,8 +1,45 @@
 const Anthropic = require('@anthropic-ai/sdk');
+const Stripe = require('stripe');
 const { sendDdtEmail } = require('./send-email');
 const { MASTER_PROMPT } = require('./master-prompt');
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+let _stripe;
+function getStripe() {
+  if (!_stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) throw new Error('STRIPE_SECRET_KEY is not set');
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2024-06-20' });
+  }
+  return _stripe;
+}
+
+const TIER_LIMITS = { express: 5, premium: 10 };
+const TIER_BY_AMOUNT = { 1400: 'express', 2400: 'premium' };
+// Hard ceiling on total characters sent to the model — defence-in-depth against
+// cost abuse even with a valid paid session (generous for ~10 diagnostic PDFs).
+const MAX_TOTAL_CHARS = 600000;
+
+function resolveTier(session) {
+  const meta = session?.metadata?.tier;
+  if (meta === 'express' || meta === 'premium') return meta;
+  return TIER_BY_AMOUNT[session?.amount_total] || 'express';
+}
+
+// AUTH GATE. Re-verify the Stripe Checkout Session server-side. The cs_ id is a
+// bearer token proving a real payment was made. Without this check the endpoint
+// is an open, unauthenticated Anthropic-API drain (anyone can run up the bill).
+async function verifyPaidSession(sessionId) {
+  if (!sessionId || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) {
+    return { ok: false, reason: 'orderId (session Stripe) manquant ou invalide' };
+  }
+  const session = await getStripe().checkout.sessions.retrieve(sessionId);
+  if (session.payment_status !== 'paid') {
+    return { ok: false, reason: `paiement non confirmé (payment_status=${session.payment_status})` };
+  }
+  const tier = resolveTier(session);
+  return { ok: true, tier, maxFiles: TIER_LIMITS[tier] };
+}
 
 async function generateSynthesis(pdfTexts) {
   const documentsBlock = pdfTexts
@@ -66,7 +103,7 @@ exports.handler = async (event) => {
     };
   }
 
-  const { orderId, email, pdfTexts, tier } = body || {};
+  const { orderId, email, pdfTexts } = body || {};
 
   if (!email) {
     return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'email required' }) };
@@ -74,11 +111,29 @@ exports.handler = async (event) => {
   if (!Array.isArray(pdfTexts) || pdfTexts.length === 0) {
     return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'pdfTexts must be a non-empty array' }) };
   }
-  if (tier && tier !== 'express' && tier !== 'premium') {
-    return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'tier must be "express" or "premium"' }) };
+
+  // --- AUTH GATE: require a real, paid Stripe session before any paid work ---
+  let auth;
+  try {
+    auth = await verifyPaidSession(orderId);
+  } catch (err) {
+    console.error('verifyPaidSession error', { orderId, message: err.message });
+    return { statusCode: 502, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: false, error: 'payment verification failed' }) };
+  }
+  if (!auth.ok) {
+    return { statusCode: 402, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: false, error: auth.reason }) };
   }
 
-  const tierFinal = tier || 'express';
+  const tierFinal = auth.tier;
+
+  // Enforce the tier's file limit + a hard input-size ceiling, server-side.
+  if (pdfTexts.length > auth.maxFiles) {
+    return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: false, error: `Trop de fichiers pour l'offre ${tierFinal} (max ${auth.maxFiles}).` }) };
+  }
+  const totalChars = pdfTexts.reduce((n, d) => n + (typeof d?.text === 'string' ? d.text.length : 0), 0);
+  if (totalChars > MAX_TOTAL_CHARS) {
+    return { statusCode: 413, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ok: false, error: 'Contenu trop volumineux.' }) };
+  }
 
   try {
     const synthesis = await generateSynthesis(pdfTexts);

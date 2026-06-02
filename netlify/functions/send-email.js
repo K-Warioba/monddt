@@ -193,28 +193,16 @@ async function sendDdtEmail({ to, synthesis, orderId }) {
 exports.sendDdtEmail = sendDdtEmail;
 exports.renderSynthesisHtml = renderSynthesisHtml;
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: JSON.stringify({ error: 'Method Not Allowed' }) };
-  }
-
-  try {
-    const { to, synthesis, orderId } = JSON.parse(event.body || '{}');
-    if (!to || !synthesis) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'to and synthesis required' }) };
-    }
-    const data = await sendDdtEmail({ to, synthesis, orderId });
-    return {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ok: true, id: data?.id }),
-    };
-  } catch (err) {
-    console.error('send-email error:', err);
-    return {
-      statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: err.message }),
-    };
-  }
+// NOT a public endpoint. Email is sent only internally by
+// process-pdfs-background.js, which calls sendDdtEmail() directly (a JS import,
+// never an HTTP round-trip). Exposing this over HTTP made it an open relay:
+// anyone could POST { to, synthesis } and send mail from our domain to any
+// address, burning Resend quota and our sending reputation. Deny all external
+// invocation; the internal export above is unaffected.
+exports.handler = async () => {
+  return {
+    statusCode: 403,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ error: 'Forbidden' }),
+  };
 };
